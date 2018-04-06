@@ -12,6 +12,17 @@ import android.support.annotation.Nullable;
 import android.support.annotation.RequiresApi;
 import android.support.v4.app.NotificationCompat;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import io.reactivex.Single;
+import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.functions.Consumer;
+import io.reactivex.schedulers.Schedulers;
+import okhttp3.MediaType;
+import okhttp3.MultipartBody;
+import okhttp3.RequestBody;
+
 /**
  * Created by VerDev06 on 4/5/2018.
  */
@@ -31,6 +42,10 @@ public class UploadService extends IntentService {
         super(name);
     }
 
+    private List<byte[]> imageList = new ArrayList<>();
+
+    private int maxSize = 1;
+
     @Override
     public void onCreate() {
         super.onCreate();
@@ -48,8 +63,31 @@ public class UploadService extends IntentService {
     }
 
     @Override
-    protected void onHandleIntent(@Nullable Intent intent) {
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        if (intent != null) {
+            byte[] image = intent.getByteArrayExtra("image");
+            imageList.add(image);
+            maxSize++;
+            updateUploadProgress();
+        }
 
+        return super.onStartCommand(intent, flags, startId);
+    }
+
+    @Override
+    protected void onHandleIntent(@Nullable Intent intent) {
+        if (intent != null) {
+            byte[] image = intent.getByteArrayExtra("image");
+            upload(image);
+        }
+    }
+
+    private void upload(byte[] image) {
+        getUploadSingle(image)
+                .subscribe(jsonResponse -> {
+                    imageList.remove(image);
+                    updateUploadProgress();
+                }, Throwable::printStackTrace);
     }
 
     @RequiresApi(api = Build.VERSION_CODES.O)
@@ -65,20 +103,20 @@ public class UploadService extends IntentService {
     }
 
     private void prepareUploadProgress() {
-        Notification notification = createProgressNotification("", "", 0);
+        Notification notification = createProgressNotification(0);
         startForeground(NOTIFICATION_ID_PROGRESS, notification);
     }
 
-    private void updateUploadProgress(int progress, String filePath) {
-        Notification notification = createProgressNotification("", "", 0);
-        startForeground(NOTIFICATION_ID_PROGRESS, notification);
+    private void updateUploadProgress() {
+        int progress = (maxSize - imageList.size()) / maxSize * 100;
+        Notification notification = createProgressNotification(progress);
+        getNotificationManager().notify(NOTIFICATION_ID_PROGRESS, notification);
     }
 
-    private Notification createProgressNotification(String contentTitle, String contentText, int progress) {
+    private Notification createProgressNotification(int progress) {
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_PROGRESS);
-        builder.setSubText("Upload Progressing");
-        builder.setContentTitle(contentTitle);
-        builder.setContentText(contentText);
+        builder.setContentTitle("Upload in progress");
+        builder.setContentText("Number of Image" + maxSize);
         builder.setSmallIcon(R.mipmap.ic_launcher);
         builder.setTicker("Upload Started");
         builder.setProgress(100, progress, false);
@@ -110,4 +148,30 @@ public class UploadService extends IntentService {
         return (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
     }
 
+    private Single<JsonResponse> getUploadSingle(byte[] image) {
+        return HttpManager.getInstance().getApiService()
+                .upload(
+                        createPartFromString("1qaz2wsx3edc4rfv"),
+                        createPartFromString("satei_transaction"),
+                        createPartFromString("upload_image"),
+                        createPartFromString("{\"staff_code\" : \"00001\",\"kyoten_code\" : \"00001\",\"group_code\" : \"99\",\"syaten_code\" : \"00001\"}"),
+                        createPartFromString("00001000010000000010"),
+                        createPartFromString("1"),
+                        createPartFromString(String.valueOf(maxSize)),
+                        getPartFromByte(image)
+                ).subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread());
+    }
+
+    public MultipartBody.Part getPartFromByte(byte[] image) {
+        RequestBody requestFile =
+                RequestBody.create(
+                        MediaType.parse("image/*"),
+                        image
+                );
+        return MultipartBody.Part.createFormData("image", "filename", requestFile);
+    }
+
+    private RequestBody createPartFromString(String s) {
+        return RequestBody.create(okhttp3.MultipartBody.FORM, s);
+    }
 }

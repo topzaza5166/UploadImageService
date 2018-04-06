@@ -2,8 +2,10 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/UploadImageService.iml" filepath="$PROJECT_DIR$/UploadImageService.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/UploadImageService.iml" filepath="$PROJECT_DIR$/.idea/UploadImageService.iml" />
+      <module fileurl="file://D:\Project\Android Project\UploadImageService\UploadImageService.iml" filepath="D:\Project\Android Project\UploadImageService\UploadImageService.iml" />
       <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
+      <module fileurl="file://D:\Project\Android Project\UploadImageService\app\app.iml" filepath="D:\Project\Android Project\UploadImageService\app\app.iml" />
     </modules>
   </component>
 </project>
